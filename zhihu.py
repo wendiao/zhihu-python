@@ -355,9 +355,12 @@ class Question:
                         soup = BeautifulSoup(self.soup.encode("utf-8"), "lxml")
 
                         is_my_answer = False
-                        if soup.find_all("div", class_="zm-item-answer")[j].find("span", class_="count") == None:
-                            my_answer_count += 1
-                            is_my_answer = True
+                        try:
+                            if soup.find_all("div", class_="zm-item-answer")[j].find("span", class_="count") == None:
+                                my_answer_count += 1
+                                is_my_answer = True
+                        except:
+                                continue
 
                         if soup.find_all("div", class_="zm-item-answer")[j].find("div", class_="zm-editable-content clearfix") == None:
                             error_answer_count += 1
@@ -367,10 +370,13 @@ class Question:
                             author_url = None
                             author = User(author_url)
                         else:
-                            author_tag = soup.find_all("div", class_="zm-item-answer-author-info")[j].find_all("a")[1]
-                            author_id = author_tag.string.encode("utf-8")
-                            author_url = "http://www.zhihu.com" + author_tag["href"]
-                            author = User(author_url, author_id)
+                            try:
+                                author_tag = soup.find_all("div", class_="zm-item-answer-author-info")[j].find_all("a")[1]
+                                author_id = author_tag.string.encode("utf-8")
+                                author_url = "http://www.zhihu.com" + author_tag["href"]
+                                author = User(author_url, author_id)
+                            except:
+                                continue
 
                         if is_my_answer == True:
                             count = soup.find_all("div", class_="zm-item-answer")[j].find("a", class_="zm-item-vote-count").string
@@ -390,16 +396,17 @@ class Question:
                         soup.head.insert_after(soup.new_tag("body", **{'class': 'zhi'}))
                         soup.body.append(answer)
                         img_list = soup.find_all("img", class_="content_image lazy")
-                        for img in img_list:
-                            img["src"] = img["data-actualsrc"]
+                        #for img in img_list:
+                        #   img["src"] = img["data-actualsrc"]
                         img_list = soup.find_all("img", class_="origin_image zh-lightbox-thumb lazy")
+                        picture = []
                         for img in img_list:
-                            img["src"] = img["data-actualsrc"]
+                            picture.append(img["data-actualsrc"])
                         noscript_list = soup.find_all("noscript")
                         for noscript in noscript_list:
                             noscript.extract()
                         content = soup
-                        answer = Answer(answer_url, self, author, upvote, content)
+                        answer = Answer(answer_url, self, author, upvote, content, picture)
                         yield answer
                 else:
                     post_url = "http://www.zhihu.com/node/QuestionAnswerListV2"
@@ -417,9 +424,11 @@ class Question:
                         'Host': "www.zhihu.com",
                         'Referer': self.url
                     }
-                    r = requests.post(post_url, data=data, headers=header)
-
-                    answer_list = r.json()["msg"]
+                    try:
+                        r = requests.post(post_url, data=data, headers=header)
+                        answer_list = r.json()["msg"]
+                    except:
+                        continue
                     for j in xrange(min(answers_num - i * 20, 20)):
                         soup = BeautifulSoup(self.soup.encode("utf-8"), "lxml")
 
@@ -899,7 +908,7 @@ class Answer:
     # session = None
     soup = None
 
-    def __init__(self, answer_url, question=None, author=None, upvote=None, content=None):
+    def __init__(self, answer_url, question=None, author=None, upvote=None, content=None,picture = None):
 
         self.answer_url = answer_url
         if question != None:
@@ -910,6 +919,8 @@ class Answer:
             self.upvote = upvote
         if content != None:
             self.content = content
+        if picture != None:
+            self.picture = picture
 
     def parser(self):
         r = requests.get(self.answer_url)
@@ -978,6 +989,7 @@ class Answer:
                 img["src"] = img["data-actualsrc"]
             img_list = soup.find_all("img", class_="origin_image zh-lightbox-thumb lazy")
             for img in img_list:
+                #print(img)
                 img["src"] = img["data-actualsrc"]
             noscript_list = soup.find_all("noscript")
             for noscript in noscript_list:
@@ -987,7 +999,6 @@ class Answer:
             return content
 
     def to_txt(self):
-
         content = self.get_content()
         body = content.find("body")
         br_list = body.find_all("br")
@@ -1137,6 +1148,43 @@ class Answer:
         else:
             f.write(text)
             f.write("\n---\n#### 原链接: " + self.answer_url)
+
+        if platform.system() == "Windows":
+            f.write("\n\n图片链接：\n".decode("utf-8").encode("gbk"))
+            name = str(self.get_question().get_title()) + "--" + str(self.get_author().get_user_id())
+            path = os.path.join(os.path.join(os.getcwd(), "markdown\\"+name))
+            if not os.path.exists(path):
+                os.makedirs(path)
+            if(len(self.picture) > 0):
+                i = 0
+                for each in self.picture:
+                   r = requests.get(each,stream = True)
+                   temppath = path + "\\" + str(i) + ".jpg"
+                   with open(temppath,"wb") as code:
+                       code.write(r.content)
+                   code.close()
+                   tmp = each + "-> markdown\\"+ name + "\\" + str(i) + ".jpg \n![](" +  temppath + ") \n"
+                   f.write(tmp)
+                   i += 1
+                   f.flush()
+        else:
+             f.write("\n\n图片链接：\n")
+             name = str(self.get_question().get_title())+ "--" + str(self.get_author().get_user_id())
+             path = os.path.join(os.path.join(os.getcwd(), "markdown//"+name))
+             if not os.path.exists(path):
+                os.makedirs(path)
+             if(len(self.picture) > 0):
+                i = 0
+                for each in self.picture:
+                   r = requests.get(each,stream = True)
+                   temppath = path + "//" + str(i) + ".jpg"
+                   with open(temppath,"wb") as code:
+                       code.write(r.content)
+                   code.close()
+                   tmp = each + "-> markdown//"+ name + str(i) + ".jpg \n![](" +  temppath + ") \n"
+                   f.write(tmp)
+                   i += 1
+                   f.flush()
         f.close()
 
     def get_visit_times(self):

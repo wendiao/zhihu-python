@@ -292,7 +292,14 @@ def main():
     column_test(column_url)
     test()
 
-
+def testall():
+    url = "http://www.zhihu.com/question/24269892"
+    question = Question(url)
+    answers = question.get_all_answers()
+    for answer in answers:
+        answer.to_txt()
+        answer.to_md()
 if __name__ == '__main__':
-    main()
+    #main()
+    testall()
 
