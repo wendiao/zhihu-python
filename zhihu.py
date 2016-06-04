@@ -1126,6 +1126,7 @@ class Answer:
         else:
             f.write("### 作者: " + self.get_author().get_user_id() + "  赞同: " + str(self.get_upvote()) + "\n")
         text = html2text.html2text(content.decode('utf-8')).encode("utf-8")
+        print(text)
 
         r = re.findall(r'\*\*(.*?)\*\*', text)
         for i in r:
@@ -1141,16 +1142,10 @@ class Answer:
         for i in r:
             text = text.replace(i, i + "\n\n")
 
-        if platform.system() == 'Windows':
-            f.write(text.decode('utf-8').encode('gbk'))
-            link_str = "\n---\n#### 原链接: ".decode('utf-8').encode('gbk')
-            f.write(link_str + self.answer_url.decode('utf-8').encode('gbk'))
-        else:
-            f.write(text)
-            f.write("\n---\n#### 原链接: " + self.answer_url)
-
+        picture_list = []
         if platform.system() == "Windows":
-            f.write("\n\n图片链接：\n".decode("utf-8").encode("gbk"))
+            text = text.decode("utf-8").encode("gbk")
+            #f.write("\n\n图片链接：\n".decode("utf-8").encode("gbk"))
             name = str(self.get_question().get_title()) + "--" + str(self.get_author().get_user_id())
             path = os.path.join(os.path.join(os.getcwd(), "markdown\\"+name))
             if not os.path.exists(path):
@@ -1163,12 +1158,14 @@ class Answer:
                    with open(temppath,"wb") as code:
                        code.write(r.content)
                    code.close()
-                   tmp = each + "-> markdown\\"+ name + "\\" + str(i) + ".jpg \n![](" +  temppath + ") \n"
-                   f.write(tmp)
+                   text = text.replace("//zhstatic.zhihu.com/assets/zhihu/ztext/whitedot.jpg",temppath,1)
+                   tmp = each + "-> markdown\\"+ name + "\\" + str(i) + ".jpg\n"
+                   #f.write(tmp)
+                   picture_list.append(tmp)
                    i += 1
-                   f.flush()
+                   #f.flush()
         else:
-             f.write("\n\n图片链接：\n")
+             #f.write("\n\n图片链接：\n")
              name = str(self.get_question().get_title())+ "--" + str(self.get_author().get_user_id())
              path = os.path.join(os.path.join(os.getcwd(), "markdown//"+name))
              if not os.path.exists(path):
@@ -1181,10 +1178,29 @@ class Answer:
                    with open(temppath,"wb") as code:
                        code.write(r.content)
                    code.close()
+                   text = text.replace("//zhstatic.zhihu.com/assets/zhihu/ztext/whitedot.jpg",temppath,1)
                    tmp = each + "-> markdown//"+ name + str(i) + ".jpg \n![](" +  temppath + ") \n"
-                   f.write(tmp)
+                   #f.write(tmp)
+                   picture_list.append(tmp)
                    i += 1
-                   f.flush()
+                   #f.flush()
+
+        if platform.system() == 'Windows':
+            f.write(text)
+            link_str = "\n---\n#### 原链接: ".decode('utf-8').encode('gbk')
+            f.write(link_str + self.answer_url.decode('utf-8').encode('gbk'))
+        else:
+            f.write(text)
+            f.write("\n---\n#### 原链接: " + self.answer_url)
+
+        if platform.system() == "Windows":
+            f.write("\n\n图片链接：\n".decode("utf-8").encode("gbk"))
+        else:
+            f.write("\n\n图片链接：\n")
+
+        for each in picture_list:
+            f.write(each)
+
         f.close()
 
     def get_visit_times(self):
